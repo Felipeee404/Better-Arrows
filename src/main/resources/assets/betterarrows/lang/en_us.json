@@ -1,0 +1,13 @@
+{
+  "itemGroup.betterarrows": "Example Mod Tab",
+  "block.betterarrows.example_block": "Example Block",
+  "item.betterarrows.example_item": "Example Item",
+
+  "betterarrows.configuration.title": "Better Arrows Configs",
+  "betterarrows.configuration.section.betterarrows.common.toml": "Better Arrows Configs",
+  "betterarrows.configuration.section.betterarrows.common.toml.title": "Better Arrows Configs",
+  "betterarrows.configuration.items": "Item List",
+  "betterarrows.configuration.logDirtBlock": "Log Dirt Block",
+  "betterarrows.configuration.magicNumberIntroduction": "Magic Number Text",
+  "betterarrows.configuration.magicNumber": "Magic Number"
+}

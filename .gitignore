@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+out/
+run/
+
+# IntelliJ / VSCode
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Minecraft/NeoForge caches
+run-server/
+run-client/
+
+# Java
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
