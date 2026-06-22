@@ -2,22 +2,30 @@
 
 A Minecraft mod that improves arrow mechanics.
 
-## ✨ Features
+## Features
 - Arrow pickup system
 - Ricochet mechanics
 - Special interactions with blocks
+- Broken arrow variants when arrows shatter on hard surfaces
 
-## ⚠️ Status
-Beta version – may contain bugs
+## Branches
+- `main`: stable releases
+- `preview`: preview builds and test versions
 
-## 📦 Installation
+## Status
+Preview version available. May contain bugs.
+
+## Installation
 1. Install NeoForge (Minecraft 1.21.1)
 2. Download the mod `.jar`
 3. Place it in your `mods` folder
 
-## 🧪 Requirements
+## Requirements
 - Minecraft 1.21.1
 - NeoForge 21.x
 
-## 📜 License
+## Changelog
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## License
 Template-based project
