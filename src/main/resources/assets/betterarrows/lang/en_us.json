@@ -2,6 +2,8 @@
   "itemGroup.betterarrows": "Example Mod Tab",
   "block.betterarrows.example_block": "Example Block",
   "item.betterarrows.example_item": "Example Item",
+  "item.betterarrows.broken_arrow_bent": "Broken Arrow",
+  "item.betterarrows.broken_arrow_tip": "Broken Arrow",
 
   "betterarrows.configuration.title": "Better Arrows Configs",
   "betterarrows.configuration.section.betterarrows.common.toml": "Better Arrows Configs",

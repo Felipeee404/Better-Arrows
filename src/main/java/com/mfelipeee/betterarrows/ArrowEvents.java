@@ -1,13 +1,16 @@
 package com.mfelipeee.betterarrows;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,11 +26,20 @@ public class ArrowEvents {
         if (!(event.getRayTraceResult() instanceof BlockHitResult hit)) return;
         if (arrow.isRemoved()) return;
 
-        BlockState state = arrow.level().getBlockState(hit.getBlockPos());
+        BlockPos pos = hit.getBlockPos();
+        BlockState state = arrow.level().getBlockState(pos);
         Block block = state.getBlock();
-        BounceProfile profile = getBounceProfile(state, block);
+        ImpactProfile profile = getImpactProfile(arrow, pos, state, block, hit.getDirection());
 
         if (profile == null) {
+            return;
+        }
+
+        if (shouldBreak(arrow, profile)) {
+            spawnBrokenArrow(arrow, hitPos(arrow, hit));
+            arrow.level().playSound(null, pos, SoundEvents.ITEM_BREAK, SoundSource.PLAYERS, 0.8f, 1.0f);
+            arrow.discard();
+            event.setCanceled(true);
             return;
         }
 
@@ -56,14 +68,7 @@ public class ArrowEvents {
             return;
         }
 
-        arrow.level().playSound(
-                null,
-                hit.getBlockPos(),
-                SoundEvents.ARROW_HIT,
-                SoundSource.PLAYERS,
-                0.8f,
-                1.0f
-        );
+        arrow.level().playSound(null, pos, SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.8f, 1.0f);
 
         arrow.setDeltaMovement(reflected);
 
@@ -79,34 +84,75 @@ public class ArrowEvents {
         event.setCanceled(true);
     }
 
-    private static BounceProfile getBounceProfile(BlockState state, Block block) {
-        if (isAbsorbingBlock(state, block)) {
+    private static ImpactProfile getImpactProfile(AbstractArrow arrow, BlockPos pos, BlockState state, Block block, Direction impactDirection) {
+        if (block == Blocks.HONEY_BLOCK) {
             return null;
         }
 
-        if (block == Blocks.SLIME_BLOCK || block == Blocks.HONEY_BLOCK) {
-            return new BounceProfile(1.0D, 0.92D, 1.45D);
+        if (isWoodLikeBlock(state, block)) {
+            return null;
         }
 
-        if (isFragileBlock(block)) {
-            return new BounceProfile(0.85D, 0.30D, 0.90D);
+        if (block == Blocks.SLIME_BLOCK) {
+            return new ImpactProfile(0.0D, 1.0D, 1.14D, 1.75D);
         }
 
-        if (isHardBlock(block)) {
-            return new BounceProfile(1.0D, 0.78D, 1.20D);
+        if (isStoneLikeBlock(arrow.level(), pos, state, block, impactDirection)) {
+            return new ImpactProfile(getBreakChance(arrow.level(), pos, state, block), 1.0D, 0.28D, 0.90D);
         }
 
-        if (block == Blocks.TARGET ||
-                block == Blocks.SCULK_SENSOR ||
-                block == Blocks.SCULK_SHRIEKER ||
-                block == Blocks.SCULK_CATALYST) {
-            return new BounceProfile(1.0D, 0.66D, 1.05D);
-        }
-
-        return new BounceProfile(0.95D, 0.52D, 1.00D);
+        return null;
     }
 
-    private static boolean isAbsorbingBlock(BlockState state, Block block) {
+    private static boolean shouldBreak(AbstractArrow arrow, ImpactProfile profile) {
+        if (profile.breakChance() <= 0.0D) {
+            return false;
+        }
+
+        return arrow.level().random.nextFloat() < profile.breakChance();
+    }
+
+    private static void spawnBrokenArrow(AbstractArrow arrow, Vec3 location) {
+        boolean bent = arrow.level().random.nextBoolean();
+        ItemStack stack = new ItemStack(
+                bent ? BetterArrows.BROKEN_ARROW_BENT.get() : BetterArrows.BROKEN_ARROW_TIP.get()
+        );
+
+        ItemEntity itemEntity = new ItemEntity(arrow.level(), location.x, location.y, location.z, stack);
+        itemEntity.setDeltaMovement(arrow.getDeltaMovement().scale(0.15D));
+        arrow.level().addFreshEntity(itemEntity);
+    }
+
+    private static Vec3 hitPos(AbstractArrow arrow, BlockHitResult hit) {
+        Vec3 base = hit.getLocation();
+        Direction direction = hit.getDirection();
+        Vec3 normal = Vec3.atLowerCornerOf(direction.getNormal()).normalize();
+        return base.add(normal.scale(0.06D));
+    }
+
+    private static double getBreakChance(net.minecraft.world.level.Level level, BlockPos pos, BlockState state, Block block) {
+        float hardness = state.getDestroySpeed(level, pos);
+
+        if (block == Blocks.OBSIDIAN || block == Blocks.BEDROCK) {
+            return 1.0D;
+        }
+
+        if (block == Blocks.REINFORCED_DEEPSLATE || block == Blocks.ANVIL) {
+            return 0.75D;
+        }
+
+        if (hardness >= 10.0F) {
+            return 0.55D;
+        }
+
+        if (hardness >= 5.0F) {
+            return 0.30D;
+        }
+
+        return 0.12D;
+    }
+
+    private static boolean isWoodLikeBlock(BlockState state, Block block) {
         return state.is(BlockTags.LOGS) ||
                 state.is(BlockTags.PLANKS) ||
                 state.is(BlockTags.WOODEN_DOORS) ||
@@ -161,37 +207,51 @@ public class ArrowEvents {
                 block == Blocks.FLETCHING_TABLE ||
                 block == Blocks.CARTOGRAPHY_TABLE ||
                 block == Blocks.MANGROVE_ROOTS ||
-                block == Blocks.OCHRE_FROGLIGHT ||
-                block == Blocks.VERDANT_FROGLIGHT ||
-                block == Blocks.PEARLESCENT_FROGLIGHT ||
                 block == Blocks.CAMPFIRE ||
                 block == Blocks.SOUL_CAMPFIRE ||
                 state.is(BlockTags.CONCRETE_POWDER);
     }
 
-    private static boolean isFragileBlock(Block block) {
-        return block == Blocks.GLASS ||
-                block == Blocks.TINTED_GLASS ||
-                GlassPaneHelper.isGlassPane(block) ||
-                block == Blocks.ICE ||
-                block == Blocks.PACKED_ICE ||
-                block == Blocks.BLUE_ICE;
-    }
-
-    private static boolean isHardBlock(Block block) {
-        return block == Blocks.OBSIDIAN ||
+    private static boolean isStoneLikeBlock(net.minecraft.world.level.Level level, BlockPos pos, BlockState state, Block block, Direction impactDirection) {
+        return state.is(BlockTags.BASE_STONE_OVERWORLD) ||
+                state.is(BlockTags.BASE_STONE_NETHER) ||
+                (state.getDestroySpeed(level, pos) >= 1.5F &&
+                        state.isFaceSturdy(level, pos, impactDirection.getOpposite())) ||
+                block == Blocks.OBSIDIAN ||
                 block == Blocks.ANVIL ||
                 block == Blocks.REINFORCED_DEEPSLATE ||
                 block == Blocks.BEDROCK ||
+                block == Blocks.DEEPSLATE ||
+                block == Blocks.COBBLED_DEEPSLATE ||
+                block == Blocks.POLISHED_DEEPSLATE ||
+                block == Blocks.DEEPSLATE_BRICKS ||
+                block == Blocks.DEEPSLATE_TILES ||
+                block == Blocks.CRACKED_DEEPSLATE_BRICKS ||
+                block == Blocks.CRACKED_DEEPSLATE_TILES ||
+                block == Blocks.STONE ||
+                block == Blocks.COBBLESTONE ||
+                block == Blocks.MOSSY_COBBLESTONE ||
+                block == Blocks.STONE_BRICKS ||
+                block == Blocks.MOSSY_STONE_BRICKS ||
+                block == Blocks.CRACKED_STONE_BRICKS ||
+                block == Blocks.CHISELED_STONE_BRICKS ||
+                block == Blocks.GRANITE ||
+                block == Blocks.POLISHED_GRANITE ||
+                block == Blocks.DIORITE ||
+                block == Blocks.POLISHED_DIORITE ||
+                block == Blocks.ANDESITE ||
+                block == Blocks.POLISHED_ANDESITE ||
+                block == Blocks.TUFF ||
+                block == Blocks.CALCITE ||
+                block == Blocks.SMOOTH_BASALT ||
                 block == Blocks.IRON_BLOCK ||
                 block == Blocks.IRON_BARS ||
-                block == Blocks.DEEPSLATE ||
                 block == Blocks.COPPER_BLOCK ||
                 block == Blocks.EXPOSED_COPPER ||
                 block == Blocks.WEATHERED_COPPER ||
                 block == Blocks.OXIDIZED_COPPER;
     }
 
-    private record BounceProfile(double ricochetChance, double energyRetention, double maxSpeed) {
+    private record ImpactProfile(double breakChance, double ricochetChance, double energyRetention, double maxSpeed) {
     }
 }

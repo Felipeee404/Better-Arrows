@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "betterarrows:item/broken_arrow_bent"
+  }
+}
