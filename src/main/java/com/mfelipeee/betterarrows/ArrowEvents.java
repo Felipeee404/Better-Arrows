@@ -5,8 +5,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -16,6 +17,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 @EventBusSubscriber(modid = BetterArrows.MODID)
 public class ArrowEvents {
@@ -32,7 +34,14 @@ public class ArrowEvents {
         ImpactProfile profile = getImpactProfile(arrow, pos, state, block, hit.getDirection());
 
         if (profile == null) {
+            if (Config.ENABLE_MATERIAL_SOUNDS.getAsBoolean() && isWoodLikeBlock(state, block)) {
+                playMaterialSound(arrow, pos, block, state, hit.getDirection());
+            }
             return;
+        }
+
+        if (Config.ENABLE_MATERIAL_SOUNDS.getAsBoolean()) {
+            playMaterialSound(arrow, pos, block, state, hit.getDirection());
         }
 
         if (shouldBreak(arrow, profile)) {
@@ -68,8 +77,6 @@ public class ArrowEvents {
             return;
         }
 
-        arrow.level().playSound(null, pos, SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.8f, 1.0f);
-
         arrow.setDeltaMovement(reflected);
 
         Vec3 hitPos = hit.getLocation();
@@ -82,6 +89,41 @@ public class ArrowEvents {
         arrow.hasImpulse = true;
         arrow.hurtMarked = true;
         event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void onArrowTick(EntityTickEvent.Post event) {
+        Entity entity = event.getEntity();
+        if (!(entity instanceof AbstractArrow arrow)) {
+            return;
+        }
+
+        if (arrow.level().isClientSide || !Config.ENABLE_WATER_SLOWDOWN.getAsBoolean()) {
+            return;
+        }
+
+        var data = arrow.getPersistentData();
+        int waterTicks = data.getInt("betterarrows_water_ticks");
+
+        if (arrow.isInWater()) {
+            waterTicks = Math.min(waterTicks + 1, Config.WATER_SLOWDOWN_DURATION_TICKS.getAsInt());
+        } else if (waterTicks > 0) {
+            waterTicks--;
+        }
+
+        data.putInt("betterarrows_water_ticks", waterTicks);
+
+        if (waterTicks <= 10) {
+            return;
+        }
+
+        double multiplier = arrow.isInWater()
+                ? Config.WATER_SLOWDOWN_IN_WATER.get()
+                : Config.WATER_SLOWDOWN_AFTER_WATER.get();
+
+        arrow.setDeltaMovement(arrow.getDeltaMovement().scale(multiplier));
+        arrow.hasImpulse = true;
+        arrow.hurtMarked = true;
     }
 
     private static ImpactProfile getImpactProfile(AbstractArrow arrow, BlockPos pos, BlockState state, Block block, Direction impactDirection) {
@@ -121,6 +163,30 @@ public class ArrowEvents {
         ItemEntity itemEntity = new ItemEntity(arrow.level(), location.x, location.y, location.z, stack);
         itemEntity.setDeltaMovement(arrow.getDeltaMovement().scale(0.15D));
         arrow.level().addFreshEntity(itemEntity);
+    }
+
+    private static void playMaterialSound(AbstractArrow arrow, BlockPos pos, Block block, BlockState state, Direction impactDirection) {
+        if (block == Blocks.SLIME_BLOCK) {
+            arrow.level().playSound(null, pos, SoundEvents.SLIME_BLOCK_HIT, SoundSource.PLAYERS, 0.9f, 1.0f);
+            return;
+        }
+
+        if (block == Blocks.HONEY_BLOCK) {
+            arrow.level().playSound(null, pos, SoundEvents.HONEY_BLOCK_HIT, SoundSource.PLAYERS, 0.9f, 1.0f);
+            return;
+        }
+
+        if (isWoodLikeBlock(state, block)) {
+            arrow.level().playSound(null, pos, SoundEvents.WOOD_HIT, SoundSource.PLAYERS, 0.8f, 1.0f);
+            return;
+        }
+
+        if (isStoneLikeBlock(arrow.level(), pos, state, block, impactDirection)) {
+            arrow.level().playSound(null, pos, SoundEvents.STONE_HIT, SoundSource.PLAYERS, 0.8f, 1.0f);
+            return;
+        }
+
+        arrow.level().playSound(null, pos, SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.8f, 1.0f);
     }
 
     private static Vec3 hitPos(AbstractArrow arrow, BlockHitResult hit) {

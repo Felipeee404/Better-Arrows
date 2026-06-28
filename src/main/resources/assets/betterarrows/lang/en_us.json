@@ -4,6 +4,11 @@
   "item.betterarrows.example_item": "Example Item",
   "item.betterarrows.broken_arrow_bent": "Broken Arrow",
   "item.betterarrows.broken_arrow_tip": "Broken Arrow",
+  "betterarrows.configuration.enableMaterialSounds": "Material Sounds",
+  "betterarrows.configuration.enableWaterSlowdown": "Water Slowdown",
+  "betterarrows.configuration.waterSlowdownDurationTicks": "Water Slowdown Duration",
+  "betterarrows.configuration.waterSlowdownInWater": "Water Slowdown In Water",
+  "betterarrows.configuration.waterSlowdownAfterWater": "Water Slowdown After Water",
 
   "betterarrows.configuration.title": "Better Arrows Configs",
   "betterarrows.configuration.section.betterarrows.common.toml": "Better Arrows Configs",
