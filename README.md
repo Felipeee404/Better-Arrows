@@ -13,7 +13,7 @@ A Minecraft mod that improves arrow mechanics.
 - `preview`: preview builds and test versions
 
 ## Status
-Preview version available. May contain bugs.
+Stable release available.
 
 ## Installation
 1. Install NeoForge (Minecraft 1.21.1)

@@ -2,7 +2,7 @@
 
 All notable changes to Better Arrows will be documented here.
 
-## [1.0.2-preview]
+## [1.0.2]
 - Added broken arrow items for bent and tip-broken variants.
 - Added item-break sound when arrows shatter on very hard blocks.
 - Added material-based impact sounds.
